@@ -1,6 +1,11 @@
-var roomId = new URLSearchParams(window.location.search).get("id");
+var roomId = location.href
+  .split("/")
+  .filter((x) => x !== "")
+  .pop();
 
-const socket = io(window.location.origin, { query: "roomId=" + roomId });
+const socket = io.connect("/canvas", {
+  query: "roomId=" + roomId,
+});
 var userId;
 var canvas, ctx;
 var moves = {};
@@ -31,19 +36,25 @@ window.addEventListener("resize", (e) => {
 
 document.addEventListener("mousedown", (e) => {
   mouseDown = true;
+  newMove([[e.offsetX, e.offsetY]]);
+});
+
+function newMove(points) {
   moveIndex++;
 
+  let id = newId();
   let newMove = {
-    points: [[e.offsetX, e.offsetY]],
+    points,
     style: {},
-    id: newId(),
+    id,
   };
 
   socket.emit("newMove", newMove);
-  currentMove = moveIndex;
+  currentMove = id;
   clientMoveList.push(currentMove);
+  moves[id] = newMove;
   drawLine(newMove);
-});
+}
 
 function newId() {
   return userId + moveIndex;
@@ -58,7 +69,7 @@ document.addEventListener("keydown", (e) => {
     clearScreen();
     socket.emit("clear");
   }
-  if (code == "KeyZ" && metaKey) {
+  if (code == "KeyZ" && metaKey && !mouseDown) {
     // Undo
     // Possible bug of undoing before newMoveId
     let undoMove = clientMoveList.pop();
@@ -86,7 +97,8 @@ function drawAllMoves() {
 function clearScreen() {
   moves = {};
   clientMoveList = [];
-  ctx.clearRect(0, 0, windowSize[0], windowSize[1]);
+  ctx.fillStyle = "black";
+  ctx.fillRect(0, 0, windowSize[0], windowSize[1]);
 }
 
 document.addEventListener("mousemove", (e) => {
@@ -95,34 +107,28 @@ document.addEventListener("mousemove", (e) => {
   getCurrentMove().points.push(p);
 
   // There needs to be some temporary ID
-  socket.emit("addPos", { _id: currentMove, pos: p });
+  socket.emit("addPos", { id: currentMove, pos: p });
 
   drawLine(getCurrentMove());
 });
 
 document.addEventListener("mouseup", (e) => {
+  if (!mouseDown) return;
+  socket.emit("finishMove", moves[currentMove]);
   mouseDown = false;
   currentMove = null;
 });
 
-socket.on("newMoveId", (id) => {
-  moves[id] = moves[currentMove];
-  delete moves[currentMove];
-  currentMove = id;
-  clientMoveList.pop(); // This returns the fake id
-  clientMoveList.push(id);
-});
-
 socket.on("newMove", (data) => {
-  moves[data._id] = data;
+  moves[data.id] = data;
   drawLine(data);
 });
 
 socket.on("addPos", (data) => {
   // Sometimes server is late and sends addPos before startup
   if (Object.keys(moves).length == 0) return;
-  moves[data._id].points.push(data.pos);
-  drawLine(moves[data._id]);
+  moves[data.id].points.push(data.pos);
+  drawLine(moves[data.id]);
 });
 
 socket.on("clear", () => {
@@ -136,14 +142,14 @@ function getCurrentMove() {
 socket.on("startup", (data) => {
   userId = socket.id;
   for (let move of data) {
-    moves[move._id] = move;
+    moves[move.id] = move;
     drawLine(move);
   }
 });
 
 function drawLine(line) {
   ctx.beginPath();
-  ctx.strokeStyle = "green";
+  ctx.strokeStyle = "yellow";
   ctx.lineWidth = 5;
   ctx.lineCap = "round";
   ctx.moveTo(line.points[0][0], line.points[0][1]);

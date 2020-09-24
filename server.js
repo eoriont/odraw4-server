@@ -6,6 +6,16 @@ const mongoose = require("mongoose");
 const mongoUrl = "mongodb://localhost:27017/odraw";
 
 app.use(express.static("public"));
+app.set("views", "./views");
+app.set("view engine", "pug");
+
+app.get("/", (req, res) => {
+  res.render("landing_page");
+});
+
+app.get("/canvas/:id", (req, res) => {
+  res.render("canvas");
+});
 
 const socket = require("socket.io");
 const io = socket(server);
@@ -17,51 +27,77 @@ mongoose.connect(mongoUrl, {
   useCreateIndex: true,
 });
 
-io.sockets.on("connection", async (socket) => {
-  console.log("New client " + socket.id);
+io.of("/canvas").on("connection", async (socket) => {
+  // console.log("New client " + socket.id);
   let roomId = socket.handshake.query.roomId;
   socket.join(roomId);
 
-  let canvas = await Canvas.findById(roomId);
+  let canvas = await Canvas.findOne({ code: roomId });
   let lines = await Line.find({
-    _id: {
-      $in: canvas.moves.map(ObjectId),
+    id: {
+      $in: canvas.moves,
     },
   });
   socket.emit("startup", lines);
 
   socket.on("newMove", (data) => {
-    let _id = ObjectId();
-    socket.broadcast.emit("newMove", { ...data, _id });
-    socket.emit("newMoveId", _id);
-    let l = new Line(data);
-    l._id = _id;
-    l.save();
-    canvas.moves.push(_id);
-    canvas.save();
+    socket.broadcast.emit("newMove", data);
   });
 
   socket.on("addPos", async (data) => {
     socket.broadcast.emit("addPos", data);
-    let l = await Line.findById(data._id);
-    l.points.push(data.pos);
-    l.save();
   });
 
   socket.on("clear", async () => {
     socket.broadcast.emit("clear");
-    Line.deleteMany({ _id: { $in: canvas.moves.map(ObjectId) } });
+    Line.deleteMany({ id: { $in: canvas.moves } });
     canvas.moves = [];
     canvas.save();
   });
 
-  socket.on("undo", async (_id) => {
-    socket.broadcast.emit("undo", _id);
-    Line.deleteOne({ _id });
-    canvas.moves.splice(canvas.moves.indexOf(_id), 1);
+  socket.on("undo", async (id) => {
+    socket.broadcast.emit("undo", id);
+    Line.deleteOne({ id });
+    canvas.moves.splice(canvas.moves.indexOf(id), 1);
+    canvas.save();
+  });
+
+  socket.on("finishMove", async (data) => {
+    let l = new Line(data);
+    l.save();
+    canvas.moves.push(data.id);
     canvas.save();
   });
 });
+
+io.of("/").on("connection", async (socket) => {
+  socket.on("newCanvas", () => {
+    let code = makeid(6);
+    let c = new Canvas({ code });
+    c.save();
+    socket.emit("redirect", code);
+  });
+
+  socket.on("connectToCanvas", async (code) => {
+    try {
+      await Canvas.find({ code });
+      socket.emit("redirect", code);
+    } catch (err) {
+      console.error(err);
+      socket.emit("invalidCode");
+    }
+  });
+});
+
+function makeid(length) {
+  var result = "";
+  var characters = "abcdefghijklmnopqrstuvwxyz0123456789";
+  var charactersLength = characters.length;
+  for (var i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * charactersLength));
+  }
+  return result;
+}
 
 const Schema = mongoose.Schema;
 const ObjectId = mongoose.Types.ObjectId;
@@ -69,11 +105,12 @@ const ObjectId = mongoose.Types.ObjectId;
 const LineSchema = new Schema({
   points: Array,
   style: Object,
+  id: String,
 });
 
 const CanvasSchema = new Schema({
-  name: String,
-  moves: Array,
+  moves: { default: [], type: Array },
+  code: String,
 });
 
 const Line = mongoose.model("lines", LineSchema);

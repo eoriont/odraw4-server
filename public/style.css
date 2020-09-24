@@ -8,4 +8,5 @@ body {
 canvas {
   overflow: hidden;
   cursor: crosshair;
+  background-color: black;
 }
