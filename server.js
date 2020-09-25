@@ -33,15 +33,15 @@ io.of("/canvas").on("connection", async (socket) => {
   socket.join(roomId);
 
   let canvas = await Canvas.findOne({ code: roomId });
-  let lines = await Line.find({
+  let actions = await Action.find({
     id: {
-      $in: canvas.moves,
+      $in: canvas.actions,
     },
   });
-  socket.emit("startup", lines);
+  socket.emit("startup", actions);
 
-  socket.on("newMove", (data) => {
-    socket.broadcast.emit("newMove", data);
+  socket.on("newAction", (data) => {
+    socket.broadcast.emit("newAction", data);
   });
 
   socket.on("addPos", async (data) => {
@@ -50,22 +50,22 @@ io.of("/canvas").on("connection", async (socket) => {
 
   socket.on("clear", async () => {
     socket.broadcast.emit("clear");
-    Line.deleteMany({ id: { $in: canvas.moves } });
-    canvas.moves = [];
+    Action.deleteMany({ id: { $in: canvas.actions } }).exec();
+    canvas.actions = [];
     canvas.save();
   });
 
   socket.on("undo", async (id) => {
     socket.broadcast.emit("undo", id);
-    Line.deleteOne({ id });
-    canvas.moves.splice(canvas.moves.indexOf(id), 1);
+    Action.deleteOne({ id });
+    canvas.actions.splice(canvas.actions.indexOf(id), 1);
     canvas.save();
   });
 
-  socket.on("finishMove", async (data) => {
-    let l = new Line(data);
-    l.save();
-    canvas.moves.push(data.id);
+  socket.on("finishAction", async (data) => {
+    let a = new Action(data);
+    a.save();
+    canvas.actions.push(data.id);
     canvas.save();
   });
 });
@@ -100,18 +100,18 @@ function makeid(length) {
 }
 
 const Schema = mongoose.Schema;
-const ObjectId = mongoose.Types.ObjectId;
 
-const LineSchema = new Schema({
+const ActionSchema = new Schema({
+  actionType: String,
   points: Array,
   style: Object,
   id: String,
 });
 
 const CanvasSchema = new Schema({
-  moves: { default: [], type: Array },
+  actions: { default: [], type: Array },
   code: String,
 });
 
-const Line = mongoose.model("lines", LineSchema);
+const Action = mongoose.model("actions", ActionSchema);
 const Canvas = mongoose.model("canvases", CanvasSchema);
