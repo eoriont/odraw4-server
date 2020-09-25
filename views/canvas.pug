@@ -6,4 +6,12 @@ head
   title ODraw 4.0!
   script(src='/socket.io/socket.io.js')
   script(src='/script.js')
+  script(src='/menu.js')
+.menu#menu
+  .menu-option
+    span#close.closebtn &times
+  .menu-option
+    input#colorPicker(type="color", name="color")
+  .menu-option
+    input#brushSize(type="range", name="brushSize", min=1, max=30)
 canvas#canvas(scroll='no')

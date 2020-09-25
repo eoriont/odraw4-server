@@ -15,6 +15,10 @@ var currentMove = null;
 var windowSize = [];
 var clientMoveList = [];
 var moveIndex = 0;
+var currentStyle = {
+  color: "#FFFFFF",
+  brushSize: 5,
+};
 
 document.addEventListener("DOMContentLoaded", () => {
   canvas = document.getElementById("canvas");
@@ -34,7 +38,11 @@ window.addEventListener("resize", (e) => {
   drawAllMoves();
 });
 
+document.addEventListener("contextmenu", (event) => event.preventDefault());
+
 document.addEventListener("mousedown", (e) => {
+  if (e.target.id != "canvas") return;
+  if (e.button != 0) return; //left click only
   mouseDown = true;
   newMove([[e.offsetX, e.offsetY]]);
 });
@@ -45,7 +53,7 @@ function newMove(points) {
   let id = newId();
   let newMove = {
     points,
-    style: {},
+    style: currentStyle,
     id,
   };
 
@@ -149,8 +157,8 @@ socket.on("startup", (data) => {
 
 function drawLine(line) {
   ctx.beginPath();
-  ctx.strokeStyle = "yellow";
-  ctx.lineWidth = 5;
+  ctx.strokeStyle = line.style.color;
+  ctx.lineWidth = line.style.brushSize;
   ctx.lineCap = "round";
   ctx.moveTo(line.points[0][0], line.points[0][1]);
   for (let p of line.points) {
