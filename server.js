@@ -1,9 +1,11 @@
+require("dotenv").config();
+
 const express = require("express");
 const app = express();
 const server = app.listen(3000);
 
 const mongoose = require("mongoose");
-const mongoUrl = "mongodb://localhost:27017/odraw";
+const mongoUrl = process.env.mongoUrl;
 
 const validateColor = require("validate-color").default;
 
