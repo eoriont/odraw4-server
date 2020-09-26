@@ -5,6 +5,7 @@ head
   link(href='/style.css', rel='stylesheet')
   title ODraw 4.0!
   script(src='/socket.io/socket.io.js')
+  script(src="/canvas.js")
   script(src='/script.js')
   script(src='/menu.js')
 .menu#menu
@@ -14,4 +15,18 @@ head
     input#colorPicker(type="color", name="color")
   .menu-option
     input#brushSize(type="range", name="brushSize", min=1, max=30)
+  .menu-option
+    p#toolPencil(name="pencil") Pencil
+  .menu-option
+    p#toolRect(name="rect") Rectangle
+  .menu-option
+    p#toolEllipse(name="ellipse") Ellipse
+  .menu-option
+    p#toolLine(name="line") Line
+  .menu-option
+    p#colorPickMode Eyedropper
+  .menu-option
+    label(for="fillShape") Fill Shape
+    input#fillShape(type="checkbox", name="fillShape")
+
 canvas#canvas(scroll='no')

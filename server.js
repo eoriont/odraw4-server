@@ -5,6 +5,8 @@ const server = app.listen(3000);
 const mongoose = require("mongoose");
 const mongoUrl = "mongodb://localhost:27017/odraw";
 
+const validateColor = require("validate-color").default;
+
 app.use(express.static("public"));
 app.set("views", "./views");
 app.set("view engine", "pug");
@@ -38,31 +40,31 @@ io.of("/canvas").on("connection", async (socket) => {
       $in: canvas.actions,
     },
   });
-  socket.emit("startup", actions);
+  socket.emit("startup", { actions, style: canvas.style });
 
   socket.on("newAction", (data) => {
     socket.broadcast.emit("newAction", data);
   });
 
-  socket.on("addPos", async (data) => {
-    socket.broadcast.emit("addPos", data);
+  socket.on("updateAction", (data) => {
+    socket.broadcast.emit("updateAction", data);
   });
 
-  socket.on("clear", async () => {
+  socket.on("clear", () => {
     socket.broadcast.emit("clear");
     Action.deleteMany({ id: { $in: canvas.actions } }).exec();
     canvas.actions = [];
     canvas.save();
   });
 
-  socket.on("undo", async (id) => {
+  socket.on("undo", (id) => {
     socket.broadcast.emit("undo", id);
     Action.deleteOne({ id });
     canvas.actions.splice(canvas.actions.indexOf(id), 1);
     canvas.save();
   });
 
-  socket.on("finishAction", async (data) => {
+  socket.on("finishAction", (data) => {
     let a = new Action(data);
     a.save();
     canvas.actions.push(data.id);
@@ -71,9 +73,13 @@ io.of("/canvas").on("connection", async (socket) => {
 });
 
 io.of("/").on("connection", async (socket) => {
-  socket.on("newCanvas", () => {
+  socket.on("newCanvas", (bkgclr) => {
     let code = makeid(6);
-    let c = new Canvas({ code });
+    let backgroundColor = validateColor(bkgclr) ? bkgclr : "#000";
+    let style = {
+      backgroundColor,
+    };
+    let c = new Canvas({ code, style });
     c.save();
     socket.emit("redirect", code);
   });
@@ -104,14 +110,20 @@ const Schema = mongoose.Schema;
 const ActionSchema = new Schema({
   actionType: String,
   points: Array,
-  style: Object,
+  style: {
+    fillShape: Boolean,
+    brushSize: Number,
+    color: String,
+  },
   id: String,
 });
+const Action = mongoose.model("actions", ActionSchema);
 
 const CanvasSchema = new Schema({
-  actions: { default: [], type: Array },
+  actions: { default: [], type: [String] },
   code: String,
+  style: {
+    backgroundColor: String,
+  },
 });
-
-const Action = mongoose.model("actions", ActionSchema);
 const Canvas = mongoose.model("canvases", CanvasSchema);

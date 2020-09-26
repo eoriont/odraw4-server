@@ -2,7 +2,8 @@ const socket = io.connect("/");
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("newCanvBtn").addEventListener("click", () => {
-    socket.emit("newCanvas");
+    let clr = document.getElementById("colorInput").value;
+    socket.emit("newCanvas", clr);
   });
 
   document.getElementById("connectBtn").addEventListener("click", () => {

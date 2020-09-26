@@ -17,24 +17,23 @@ var actionIndex = 0;
 var currentStyle = {
   color: "#FFFFFF",
   brushSize: 5,
+  fillShape: false,
 };
 var currentType = "pencil";
+var colorPickMode = false;
+var canvasStyle = {};
 
 document.addEventListener("DOMContentLoaded", () => {
   canvas = document.getElementById("canvas");
+  canvas.style.backgroundColor = canvasStyle.backgroundColor;
   ctx = canvas.getContext("2d");
   windowSize = [window.innerWidth, window.innerHeight];
-  sizeCanvas();
+  sizeCanvas(canvas, windowSize);
 });
-
-function sizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
 
 window.addEventListener("resize", (e) => {
   windowSize = [window.innerWidth, window.innerHeight];
-  sizeCanvas();
+  sizeCanvas(canvas, windowSize);
   drawAllActions();
 });
 
@@ -43,9 +42,26 @@ document.addEventListener("contextmenu", (event) => event.preventDefault());
 document.addEventListener("mousedown", (e) => {
   if (e.target.id != "canvas") return;
   if (e.button != 0) return; //left click only
+  if (colorPickMode) {
+    let imageData = ctx.getImageData(e.offsetX, e.offsetY, 1, 1);
+    currentStyle.color = rgbToHex(...imageData.data);
+    colorPicker.value = currentStyle.color;
+    colorPickMode = false;
+    return;
+  }
   mouseDown = true;
   newAction([[e.offsetX, e.offsetY]]);
+  drawAction(actions[currentAction]);
 });
+
+function componentToHex(c) {
+  var hex = c.toString(16);
+  return hex.length == 1 ? "0" + hex : hex;
+}
+
+function rgbToHex(r, g, b) {
+  return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
+}
 
 function newAction(points) {
   actionIndex++;
@@ -53,16 +69,15 @@ function newAction(points) {
   let id = newId();
   let newAction = {
     points,
-    style: currentStyle,
+    style: Object.assign({}, currentStyle),
     id,
-    actionType: "pencil",
+    actionType: currentType,
   };
 
   socket.emit("newAction", newAction);
   currentAction = id;
   clientActionList.push(currentAction);
   actions[id] = newAction;
-  drawAction(newAction);
 }
 
 function newId() {
@@ -96,33 +111,20 @@ function undo(actionId) {
   drawAllActions();
 }
 
-function drawAllActions() {
-  clearCanvas();
-  for (let action of Object.values(actions)) {
-    drawAction(action);
-  }
-}
-
 function clear() {
   actions = {};
   clientActionList = [];
   clearCanvas();
 }
 
-function clearCanvas() {
-  ctx.fillStyle = "black";
-  ctx.fillRect(0, 0, windowSize[0], windowSize[1]);
-}
-
 document.addEventListener("mousemove", (e) => {
   if (!mouseDown) return;
   let p = [e.offsetX, e.offsetY];
-  actions[currentAction].points.push(p);
 
-  // There needs to be some temporary ID
-  socket.emit("addPos", { id: currentAction, pos: p });
-
-  drawLine(actions[currentAction]);
+  let actionData = { id: currentAction, pos: p, actionType: currentType };
+  updateAction(actionData);
+  socket.emit("updateAction", actionData);
+  drawActionOrClear(actionData);
 });
 
 document.addEventListener("mouseup", (e) => {
@@ -137,39 +139,47 @@ socket.on("newAction", (data) => {
   drawLine(data);
 });
 
-socket.on("addPos", (data) => {
-  // Sometimes server is late and sends addPos before startup
+socket.on("updateAction", (data) => {
+  // Sometimes server is late and sends updateAction before startup
   if (Object.keys(actions).length == 0) return;
-  actions[data.id].points.push(data.pos);
-  drawAction(actions[data.id]);
+
+  // Update actions and draw the new one
+  updateAction(data);
+  // For shapes, you will need to clear the canvas
+  drawActionOrClear(data);
 });
+
+function drawActionOrClear(data) {
+  if (["rect", "ellipse", "line"].includes(data.actionType)) {
+    drawAllActions();
+  } else {
+    drawAction(actions[data.id]);
+  }
+}
+
+function updateAction(data) {
+  switch (data.actionType) {
+    case "pencil":
+      actions[data.id].points.push(data.pos);
+      break;
+    case "rect":
+    case "ellipse":
+    case "line":
+      // Changes first point in both rect, line, and ellipse
+      actions[data.id].points[1] = data.pos;
+      break;
+    default:
+      console.error("Update Action: Invalid action!");
+  }
+}
 
 socket.on("startup", (data) => {
   userId = socket.id;
-  for (let action of data) {
+  canvasStyle = data.style;
+  canvas.style.backgroundColor = data.style.backgroundColor;
+  // Populate actions and draw them in one loop
+  for (let action of data.actions) {
     actions[action.id] = action;
     drawAction(action);
   }
 });
-
-function drawAction(action) {
-  setStyle(action.style);
-  if (action.actionType == "pencil") {
-    drawLine(action);
-  }
-}
-
-function drawLine(line) {
-  ctx.beginPath();
-  ctx.moveTo(line.points[0][0], line.points[0][1]);
-  for (let p of line.points) {
-    ctx.lineTo(p[0], p[1]);
-  }
-  ctx.stroke();
-}
-
-function setStyle(style) {
-  ctx.strokeStyle = style.color;
-  ctx.lineWidth = style.brushSize;
-  ctx.lineCap = "round";
-}
