@@ -143,6 +143,7 @@ function drawActionOrClear(data) {
 function updateAction(data) {
   switch (data.actionType) {
     case "pencil":
+    case "eraser":
       actions[data.id].points.push(data.pos);
       break;
     case "rect":
@@ -161,6 +162,7 @@ socket.on("startup", (data) => {
   canvasStyle = data.style;
   canvas.style.backgroundColor = data.style.backgroundColor;
   // Populate actions and draw them in one loop
+  clearCanvas();
   for (let action of data.actions) {
     actions[action.id] = action;
     drawAction(action);

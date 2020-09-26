@@ -1,6 +1,8 @@
 function drawAction(action) {
   setStyle(action.style);
   switch (action.actionType) {
+    case "eraser":
+      ctx.strokeStyle = canvasStyle.backgroundColor;
     case "pencil":
       drawLine(action);
       break;

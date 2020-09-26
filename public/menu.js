@@ -45,7 +45,13 @@ document.addEventListener("DOMContentLoaded", () => {
     currentStyle.brushSize = e.target.value;
   });
 
-  let toolIds = ["toolPencil", "toolRect", "toolEllipse", "toolLine"];
+  let toolIds = [
+    "toolPencil",
+    "toolRect",
+    "toolEllipse",
+    "toolLine",
+    "toolEraser",
+  ];
   toolBtns = toolIds.map(document.getElementById.bind(document));
   for (let btn of toolBtns) {
     btn.parentElement.addEventListener("click", (e) => {
@@ -68,6 +74,15 @@ document.addEventListener("DOMContentLoaded", () => {
   colorPickModeBtn.addEventListener("click", () =>
     setColorPickMode(!colorPickMode)
   );
+
+  let downloadBtn = document.getElementById("download").parentElement;
+  downloadBtn.addEventListener("click", (e) => {
+    var link = document.createElement("a");
+    link.download = "img.png";
+    link.href = canvas.toDataURL();
+    link.click();
+    link.remove();
+  });
 });
 
 function setColorPickMode(state) {
