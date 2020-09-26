@@ -2,6 +2,7 @@ doctype html
 head
   meta(charset='UTF-8')
   meta(content='width=device-width, initial-scale=1.0', name='viewport')
+  link(href="https://fonts.googleapis.com/css2?family=Epilogue:wght@600&display=swap" rel="stylesheet")
   link(href='/style.css', rel='stylesheet')
   title ODraw 4.0!
   script(src='/socket.io/socket.io.js')
@@ -10,11 +11,11 @@ head
   script(src='/menu.js')
 .menu#menu
   .menu-option
-    span#close.closebtn &times
+    p#close.closebtn Close Menu &times
   .menu-option
     input#colorPicker(type="color", name="color")
   .menu-option
-    input#brushSize(type="range", name="brushSize", min=1, max=30)
+    input#brushSize.slider(type="range", name="brushSize", min=1, max=30)
   .menu-option
     p#toolPencil(name="pencil") Pencil
   .menu-option
@@ -26,7 +27,6 @@ head
   .menu-option
     p#colorPickMode Eyedropper
   .menu-option
-    label(for="fillShape") Fill Shape
-    input#fillShape(type="checkbox", name="fillShape")
+    p#fillShape Fill Shape
 
 canvas#canvas(scroll='no')

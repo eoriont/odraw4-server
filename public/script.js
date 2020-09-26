@@ -7,7 +7,6 @@ const socket = io.connect("/canvas", {
   query: "roomId=" + roomId,
 });
 var userId;
-var canvas, ctx;
 var actions = {};
 var mouseDown = false;
 var currentAction = null;
@@ -23,22 +22,6 @@ var currentType = "pencil";
 var colorPickMode = false;
 var canvasStyle = {};
 
-document.addEventListener("DOMContentLoaded", () => {
-  canvas = document.getElementById("canvas");
-  canvas.style.backgroundColor = canvasStyle.backgroundColor;
-  ctx = canvas.getContext("2d");
-  windowSize = [window.innerWidth, window.innerHeight];
-  sizeCanvas(canvas, windowSize);
-});
-
-window.addEventListener("resize", (e) => {
-  windowSize = [window.innerWidth, window.innerHeight];
-  sizeCanvas(canvas, windowSize);
-  drawAllActions();
-});
-
-document.addEventListener("contextmenu", (event) => event.preventDefault());
-
 document.addEventListener("mousedown", (e) => {
   if (e.target.id != "canvas") return;
   if (e.button != 0) return; //left click only
@@ -46,7 +29,7 @@ document.addEventListener("mousedown", (e) => {
     let imageData = ctx.getImageData(e.offsetX, e.offsetY, 1, 1);
     currentStyle.color = rgbToHex(...imageData.data);
     colorPicker.value = currentStyle.color;
-    colorPickMode = false;
+    setColorPickMode(false);
     return;
   }
   mouseDown = true;

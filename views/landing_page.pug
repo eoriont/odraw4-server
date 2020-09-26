@@ -5,12 +5,21 @@ head
   title ODraw 4.0!
   script(src='/socket.io/socket.io.js')
   script(src='/index.js')
-p Welcome to ODraw! This is the landing page.
-
-input#codeInput
-
-button#connectBtn Connect Using Code
-
-button#newCanvBtn Make a new Canvas
-
-input#colorInput(placeholder="Canvas color in hex")
+  link(href="https://fonts.googleapis.com/css2?family=Epilogue:wght@600&display=swap" rel="stylesheet")
+  link(rel="stylesheet", href="/index.css")
+.content
+  .centered
+    h1 Welcome to ODraw!
+    label(for="codeInput") Input a canvas code here:
+    br
+    input#codeInput(name="codeInput" placeholder="Code goes here")
+    br
+    button#connectBtn Connect Using Code
+    br
+    label(for="newCanvBtn") Or, Create a new canvas!
+    br
+    button#newCanvBtn Make a new Canvas
+    br
+    label(for="canvColor") (Optional) set the canvas background color. Defaults to black.
+    br
+    input#colorInput(placeholder="Canvas color in hex" name="canvColor")
