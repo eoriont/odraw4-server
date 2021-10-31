@@ -3,7 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const app = express();
 const server = app.listen(process.env.PORT || 3000, () => {
-  console.log("Started server!");
+  console.log("Started server on port 3000!");
 });
 
 const mongoose = require("mongoose");
@@ -31,6 +31,8 @@ mongoose.connect(mongoUrl, {
   useUnifiedTopology: true,
   useFindAndModify: false,
   useCreateIndex: true,
+}).catch(e => {
+  console.error("Connection Error!", e);
 });
 
 io.of("/canvas").on("connection", async (socket) => {
@@ -47,22 +49,22 @@ io.of("/canvas").on("connection", async (socket) => {
   socket.emit("startup", { actions, style: canvas.style });
 
   socket.on("newAction", (data) => {
-    socket.broadcast.emit("newAction", data);
+    socket.broadcast.to(roomId).emit("newAction", data);
   });
 
   socket.on("updateAction", (data) => {
-    socket.broadcast.emit("updateAction", data);
+    socket.broadcast.to(roomId).emit("updateAction", data);
   });
 
   socket.on("clear", () => {
-    socket.broadcast.emit("clear");
+    socket.broadcast.to(roomId).emit("clear");
     Action.deleteMany({ id: { $in: canvas.actions } }).exec();
     canvas.actions = [];
     canvas.save();
   });
 
   socket.on("undo", (id) => {
-    socket.broadcast.emit("undo", id);
+    socket.broadcast.to(roomId).emit("undo", id);
     Action.deleteOne({ id });
     canvas.actions.splice(canvas.actions.indexOf(id), 1);
     canvas.save();
